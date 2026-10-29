@@ -453,5 +453,3 @@ The Gram loss column (`train_loss_gram`) is `0` until that second line appears.
 - Sablayrolles et al., *Spreading vectors for similarity search* (KoLeo regulariser).
 
 **License.** Follow the licenses of the upstream projects: WildfireSpreadTS/UTAE code and the DINOv3 pretrained weights (which have their own license).
-
-Maintainer: _your name / contact_
