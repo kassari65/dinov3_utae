@@ -418,18 +418,7 @@ The Gram loss column (`train_loss_gram`) is `0` until that second line appears.
 
 <a id="results"></a>
 
-## 8. Results
-
-No results are reported yet. Fill in the table after running the ablations of Section 6.3 on the held-out test folds.
-
-| Model | AP | F1 | IoU | Notes |
-| --- | --- | --- | --- | --- |
-| UTAE (baseline) | TODO | TODO | TODO | |
-| UTAE + DINOv3 (stage 3, hybrid) | TODO | TODO | TODO | |
-
-<a id="troubleshooting"></a>
-
-## 9. Troubleshooting
+## 8. Troubleshooting
 
 | Symptom | Check / action |
 | --- | --- |
@@ -445,7 +434,7 @@ No results are reported yet. Fill in the table after running the ablations of Se
 
 <a id="limitations"></a>
 
-## 10. Limitations and Next Steps
+## 9. Limitations and Next Steps
 
 - **Evaluation pending.** The code path is implemented; no benchmark comparison against UTAE is reported.
 - **Cost.** DINOv3 runs on every day of every sample, including padded frames (padding is excluded from the auxiliary losses but still passes through the ViT). Backward through the frozen blocks is still required to train the patch embedding.
@@ -456,7 +445,7 @@ No results are reported yet. Fill in the table after running the ablations of Se
 
 <a id="references"></a>
 
-## 11. References
+## 10. References
 
 - Ronneberger et al. / Garnot & Landrieu, [Panoptic Segmentation of Satellite Image Time Series with Convolutional Temporal Attention Networks](https://arxiv.org/abs/2107.07933) (UTAE).
 - Gerard et al., [WildfireSpreadTS: A dataset of multi-modal time series for wildfire spread prediction](https://github.com/SebastianGer/WildfireSpreadTS).
