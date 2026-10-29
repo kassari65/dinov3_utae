@@ -1,0 +1,15 @@
+data_dir: /home/sl221120/scratch/WildfireSpreadTS_HDF5
+batch_size: 64
+n_leading_observations: 1
+crop_side_length: 128
+load_from_hdf5: true
+num_workers: 8
+remove_duplicate_features: true
+features_to_keep: [0, 1, 2, 3, 4, 38, 39]
+n_leading_observations_test_adjustment: 5
+data_fold_id: 2
+filter_ignition_train: False
+filter_ignition_val_test: False
+ignition_only_train: False 
+ignition_only_val_test: True
+is_pad: true

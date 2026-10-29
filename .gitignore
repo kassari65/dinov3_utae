@@ -1,0 +1,9 @@
+pretrained_weights/
+lightning_logs/
+*.zip
+__pycache__/
+*.pt
+*.pth
+*.ckpt
+Screenshot*.png
+

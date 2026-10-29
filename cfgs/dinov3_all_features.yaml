@@ -1,0 +1,25 @@
+# Đặt tại cfgs/UTAE/dinov3_all_features.yaml  (khác all_features.yaml: class_path + các tham số DINOv3)
+# lr=0.01 áp cho phần UTAE; ViT nhận lr*dino_lr_mult (=1e-4), patch_embed 40 kênh nhận lr*patch_embed_lr_mult (=1e-3).
+seed_everything: 0
+optimizer:
+  class_path: torch.optim.AdamW
+  init_args:
+    lr: 0.01
+model:
+  class_path: UTAEDinoV3Lightning
+  init_args:
+    n_channels: 40               # train.py ghi đè theo config dữ liệu
+    flatten_temporal_dimension: false
+    pos_class_weight: 10         # train.py ghi đè bằng 1/fire_rate
+    loss_function: "BCE"
+    dino_arch: dinov3_vits16
+    dino_weights: /path/to/dinov3_vits16_pretrain_lvd1689m-08c60483.pth
+    fusion_mode: hybrid
+    fusion_stages: [3]           # chỉ bottleneck; [2, 3] để thêm stage 2
+    dino_unfreeze_epoch: 5
+    w_dice: 0.25
+    w_gram: 1.0
+    w_koleo: 0.0                 # 0 = tắt; chưa có cơ sở vững cho bài này
+do_train: true
+do_test: true
+do_predict: false

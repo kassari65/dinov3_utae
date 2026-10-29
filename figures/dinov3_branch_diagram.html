@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DINOv3 Backbone and Fusion Pipeline</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: #ffffff;
+      color: #111827;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: 30px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .diagram-container {
+      width: 100%;
+      max-width: 960px;
+      background: #ffffff;
+    }
+
+    /* Academic Title */
+    h2.title {
+      font-family: Georgia, "Times New Roman", Times, serif;
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #374151;
+      margin-bottom: 24px;
+      font-weight: 500;
+    }
+
+    /* Main Grid Layout */
+    .flow-wrapper {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* Block Card Styling - Matching User & Friend's Figures */
+    .card {
+      border-radius: 6px;
+      border: 1.5px solid #1f2937;
+      padding: 12px 18px;
+      position: relative;
+    }
+
+    .card-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #111827;
+      margin-bottom: 4px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .card-desc {
+      font-size: 12px;
+      color: #374151;
+      line-height: 1.4;
+    }
+
+    .card-shape {
+      font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+      font-size: 11px;
+      font-weight: 600;
+      background: rgba(0,0,0,0.06);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 1px solid rgba(0,0,0,0.1);
+    }
+
+    /* Exact Color Schemes */
+    /* Light Grey - Inputs & Connectors */
+    .bg-grey {
+      background-color: #f3f4f6;
+      border-color: #4b5563;
+    }
+
+    /* Pastel Blue - Pretrained ViT & DINOv3 Features */
+    .bg-blue {
+      background-color: #dbeafe;
+      border-color: #2563eb;
+    }
+
+    /* Pastel Pink/Salmon - Trainable Components & Fusion Gate */
+    .bg-pink {
+      background-color: #fee2e2;
+      border-color: #dc2626;
+    }
+
+    /* Pastel Peach/Orange - Feature Projection & Mixing */
+    .bg-orange {
+      background-color: #ffedd5;
+      border-color: #ea580c;
+    }
+
+    /* Pastel Amber/Yellow - Regularizers / Losses */
+    .bg-amber {
+      background-color: #fef3c7;
+      border-color: #d97706;
+    }
+
+    /* Arrow Connectors */
+    .arrow-v {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: -4px 0;
+    }
+
+    .arrow-v-line {
+      width: 1.5px;
+      height: 14px;
+      background-color: #374151;
+    }
+
+    .arrow-v-head {
+      width: 0; 
+      height: 0; 
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid #374151;
+    }
+
+    /* Two-column splits */
+    .row-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    /* Footer Note */
+    .footer-note {
+      margin-top: 24px;
+      padding-top: 14px;
+      border-top: 1px solid #e5e7eb;
+      font-size: 11.5px;
+      color: #4b5563;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<div class="diagram-container">
+  <h2 class="title">DINOv3 Pipeline & Fusion Components for UTAE</h2>
+  <div class="subtitle">
+    Forward processing: multi-modal satellite series → adapted ViT-S/16 → gated Stage-3 feature injection (UTAE omitted).
+  </div>
+
+  <div class="flow-wrapper">
+
+    <!-- 1. Input -->
+    <div class="card bg-grey">
+      <div class="card-title">
+        <span>Raw Multi-Modal Time Series x(t)</span>
+        <span class="card-shape">[B, T, C, H, W]</span>
+      </div>
+      <div class="card-desc">
+        Satellite reflectance + weather + terrain + fire masks (T = 5 days, C = 40 channels, H×W pixels).
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="arrow-v"><div class="arrow-v-line"></div><div class="arrow-v-head"></div></div>
+
+    <!-- 2. Flatten & Upsample -->
+    <div class="card bg-grey">
+      <div class="card-title">
+        <span>Temporal Flatten & Bilinear Scale (2.0×)</span>
+        <span class="card-shape">[B·T, C, 2H, 2W]</span>
+      </div>
+      <div class="card-desc">
+        <code>flatten(0, 1)</code> processes all days in parallel; scaled to match ViT patch grid (16×16).
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="arrow-v"><div class="arrow-v-line"></div><div class="arrow-v-head"></div></div>
+
+    <!-- 3. Adapted Patch Embedding -->
+    <div class="card bg-pink">
+      <div class="card-title">
+        <span>Adapted Patch Embedding (Trainable)</span>
+        <span class="card-shape">C → 384 dim</span>
+      </div>
+      <div class="card-desc">
+        Conv2d(kernel=16, stride=16). Replicates RGB weights across C channels: 
+        <code>W_new = (W_rgb.mean · 3/C).repeat(1, C, 1, 1)</code>.
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="arrow-v"><div class="arrow-v-line"></div><div class="arrow-v-head"></div></div>
+
+    <!-- 4. DINOv3 ViT Backbone -->
+    <div class="card bg-blue">
+      <div class="card-title">
+        <span>Pretrained DINOv3 ViT-S/16 Backbone</span>
+        <span class="card-shape">12 Blocks, 6 Heads</span>
+      </div>
+      <div class="card-desc">
+        • 1 [CLS] token + 4 Register tokens + N Patch tokens (N = H/8 × W/8) + 2D Axial RoPE.<br>
+        • <strong>Warm-up (&lt; 5 ep):</strong> ViT frozen, only patch embedding trains.<br>
+        • <strong>Fine-tune (≥ 5 ep):</strong> Unfreeze last 4 blocks + norm (LR mult = 0.01).
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="arrow-v"><div class="arrow-v-line"></div><div class="arrow-v-head"></div></div>
+
+    <!-- 5. Intermediate Extraction -->
+    <div class="card bg-blue">
+      <div class="card-title">
+        <span>Feature Extraction & Spatial Reshape (Layer 11)</span>
+        <span class="card-shape">[B·T, 384, H/8, W/8]</span>
+      </div>
+      <div class="card-desc">
+        Applies final LayerNorm; discards [CLS] and registers; un有機/flattens patch tokens to 2D grid.
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="arrow-v"><div class="arrow-v-line"></div><div class="arrow-v-head"></div></div>
+
+    <!-- 6. DinoFusion Module -->
+    <div class="card bg-pink">
+      <div class="card-title">
+        <span>DinoFusion Module (Trainable Adapter)</span>
+        <span class="card-shape">d: 384 → 128 dim</span>
+      </div>
+      <div class="card-desc">
+        • <strong>Proj:</strong> Conv 1×1 (384 → 128) + GroupNorm(4) + GELU → Bilinear resize to (H/8, W/8).<br>
+        • <strong>Mix & Gate:</strong> <code>out = c + gate · Conv3x3([c, proj(d)])</code> with learnable <code>gate = 0.0</code> (zero-init).
+      </div>
+    </div>
+
+    <!-- Arrow -->
+    <div class="arrow-v"><div class="arrow-v-line"></div><div class="arrow-v-head"></div></div>
+
+    <!-- 7. Injected Interface -->
+    <div class="card bg-orange" style="border: 2px solid #ea580c;">
+      <div class="card-title">
+        <span>Output Injected to UTAE Stage 3 / L-TAE</span>
+        <span class="card-shape">[B, T, 128, H/8, W/8]</span>
+      </div>
+      <div class="card-desc">
+        Replaces raw Stage-3 feature map with hybrid DINOv3-fused tensor <strong>z(t)</strong> right before Temporal Attention.
+      </div>
+    </div>
+
+    <!-- 8. Auxiliary Losses (Bottom split) -->
+    <div class="row-split" style="margin-top: 6px;">
+      <div class="card bg-amber">
+        <div class="card-title">
+          <span>Gram Anchoring Loss (w = 1.0)</span>
+          <span class="card-shape">L_gram</span>
+        </div>
+        <div class="card-desc">
+          MSE between current ViT patch Gram matrix and frozen epoch-5 Teacher snapshot. Preserves spatial geometry.
+        </div>
+      </div>
+
+      <div class="card bg-amber">
+        <div class="card-title">
+          <span>KoLeo Regularizer (w = 0.0)</span>
+          <span class="card-shape">L_koleo</span>
+        </div>
+        <div class="card-desc">
+          Negative log-distance to nearest neighbor sample. Spreads global wildfire representations in batch.
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="footer-note">
+    DINOv3 operates entirely as an auxiliary feature provider. Training initializes identically to original UTAE via zero-initialized gating.
+  </div>
+</div>
+
+</body>
+</html>

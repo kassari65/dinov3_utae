@@ -1,0 +1,10 @@
+data_dir: /home/sl221120/scratch/WildfireSpreadTS_HDF5
+batch_size: 64
+n_leading_observations: 5
+crop_side_length: 128
+load_from_hdf5: true
+num_workers: 8
+remove_duplicate_features: false
+n_leading_observations_test_adjustment: 5
+features_to_keep: null
+return_doy: true
