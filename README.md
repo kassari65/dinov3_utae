@@ -70,6 +70,10 @@ For each day, the resampled layers are stacked along the channel axis into one r
 | Augmentation | Random **crop** to a fixed size, **flip** and **rotate**; the same transform is applied to all five days *and* the label so they stay aligned | `5 × C × H × W` (cropped) |
 | Normalisation | Encodes each feature according to its kind (table below) | `5 × C × H × W` |
 
+##### Feature normalisation details
+
+Because the multi-modal input combines heterogeneous physical observations with completely different numeric ranges and semantics (reflectance, weather conditions, terrain topography and discrete land cover), each feature is encoded according to its mathematical nature:
+
 | Feature kind | Encoding | Typical examples |
 | --- | --- | --- |
 | Cyclic / angular | `sin θ` (add `cos θ` if the angle must be recovered uniquely) | Wind direction, aspect, day of year |
@@ -141,24 +145,16 @@ Forward pass of [`UTAEDinoV3.forward()`](#code-map), in order:
 
 <a id="fusion-module"></a>
 
-
 ![DINOv3 Pipeline & Fusion for UTAE: multi-modal time series input → adapted DINOv3 ViT-S/16 → feature extraction & reshape → DinoFusion module (proj 1×1, mix & gate) → injected into UTAE Stage 3 / L-TAE, alongside auxiliary Gram anchoring and KoLeo regularizers.](figures/dinov3-fusion-module.png)
 
-*Figure 4. DINOv3 pipeline & fusion module (`DinoFusion`) used at stage 3. The data flow through the module is:*
+*Figure 4. DINOv3 pipeline and fusion module (`DinoFusion`) at stage 3.*
 
-```text
-DINOv3 feature map  [B·T, 384, gh, gw]
-        │  Conv1×1 (384→128, no bias) → GroupNorm(4) → GELU          ("proj")
-        │  bilinear resize to the stage-3 size (H/8, W/8)
-        ▼
-d  [B·T, 128, H/8, W/8]          UTAE conv feature c  [B·T, 128, H/8, W/8]
-        └───────────── concat ────────────┘
-                         │  Conv3×3 (256→128, no bias) → GroupNorm(4)   ("mix")
-                         ▼
-                      gate (per-channel, initialised to 0)
-                         ▼
-        out = c + gate · mix([c, d])          → reshape to [B, T, 128, H/8, W/8]
-```
+The fusion module acts as an adapter between the high-level semantic representation extracted by DINOv3 and the localized convolutional feature map of UTAE:
+
+1. **Projection (`proj`):** The extracted DINOv3 patch tokens `[B·T, 384, gh, gw]` are projected down to 128 channels via a 1×1 convolution (no bias), GroupNorm(4) and GELU activation.
+2. **Spatial alignment:** The projected features are bilinearly interpolated to the exact stage-3 spatial resolution `(H/8, W/8)`.
+3. **Feature mixing and gating (`mix`):** In hybrid mode, the projected DINOv3 features `d` and UTAE convolutional features `c` are concatenated along the channel axis (`[c, d]` with 256 channels), processed through a 3×3 convolution and GroupNorm(4), and modulated by a learnable per-channel gate initialised to zero.
+4. **Residual addition:** The gated mixture is added back to `c` via `out = c + gate · mix([c, d])` and reshaped to `[B, T, 128, H/8, W/8]` before entering the temporal encoder (L-TAE).
 
 Two fusion modes are implemented (`fusion_mode`):
 
@@ -243,7 +239,7 @@ $$
 **Gram loss.** With L2-normalised patch tokens $\hat{S}$ (student) and $\hat{A}$ (anchor, no gradient), both of shape `[N_frames, N_patches, 384]`:
 
 $$
-\mathcal{L}_{\text{gram}}=\operatorname{MSE}\!\left(\hat{S}\hat{S}^{\top},\;\hat{A}\hat{A}^{\top}\right)
+\mathcal{L}_{\text{gram}}=\text{MSE}\left(\hat{S}\hat{S}^{\top}, \hat{A}\hat{A}^{\top}\right)
 $$
 
 It constrains *which patches look similar to which*, not the features themselves, so the ViT can adapt while keeping its spatial structure. Only non-padded time steps are used.
